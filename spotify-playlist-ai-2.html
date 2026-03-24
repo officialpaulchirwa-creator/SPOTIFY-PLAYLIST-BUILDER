@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PLST — AI Playlist Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--s1:#111111;--s2:#181818;--s3:#222222;
+  --border:#2a2a2a;--border2:#333;
+  --green:#00e676;--amber:#ffab00;--red:#ff5252;--blue:#448aff;
+  --text:#d0d0d0;--text2:#888;--white:#f0f0f0;
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
+
+.app{position:relative;z-index:1;display:grid;grid-template-columns:290px 1fr;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.logo-mark{font-family:var(--mono);font-size:1.4rem;font-weight:700;letter-spacing:-1px;color:var(--white);display:flex;align-items:center;gap:8px}
+.logo-mark .dot{width:9px;height:9px;background:var(--green);border-radius:50%;box-shadow:0 0 10px var(--green);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 10px var(--green)}50%{opacity:.4;box-shadow:0 0 3px var(--green)}}
+.logo-sub{font-size:.62rem;font-family:var(--mono);color:var(--text2);margin-top:4px;letter-spacing:2px}
+
+.mode-tabs{display:grid;grid-template-columns:1fr 1fr}
+.mode-tab{background:none;border:none;border-right:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--text2);font-family:var(--mono);font-size:.65rem;letter-spacing:2px;text-transform:uppercase;padding:13px 8px;cursor:pointer;transition:all .2s;position:relative}
+.mode-tab:last-child{border-right:none}
+.mode-tab.active{color:var(--green);background:rgba(0,230,118,.05)}
+.mode-tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--green)}
+.mode-tab:hover:not(.active){color:var(--white);background:var(--s2)}
+
+.config{padding:16px 18px 0}
+.sec-label{font-family:var(--mono);font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--text2);margin:14px 0 10px;display:flex;align-items:center;gap:8px}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.field{margin-bottom:12px}
+.field label{display:block;font-family:var(--mono);font-size:.58rem;letter-spacing:2px;color:var(--text2);margin-bottom:5px;text-transform:uppercase}
+.field input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:4px;color:var(--white);font-family:var(--mono);font-size:.75rem;padding:8px 11px;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--green)}
+.field input::placeholder{color:#444}
+
+.connect-btn{width:100%;background:var(--s3);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:.65rem;letter-spacing:1px;padding:9px;cursor:pointer;transition:all .2s;margin-top:2px}
+.connect-btn:hover{border-color:var(--green);color:var(--green)}
+.connect-btn.connected{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.05)}
+
+.help-link{display:block;font-family:var(--mono);font-size:.6rem;color:var(--text2);text-decoration:none;margin-top:14px;padding:9px 10px;border:1px dashed var(--border2);border-radius:4px;text-align:center;transition:all .2s;margin-bottom:16px}
+.help-link:hover{border-color:var(--amber);color:var(--amber)}
+
+.sidebar-stats{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border);display:none;flex-direction:column;gap:7px}
+.stat-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.62rem}
+.stat-row .k{color:var(--text2);letter-spacing:1px}
+.stat-row .v{color:var(--white)}
+.stat-row .v.g{color:var(--green)}
+.stat-row .v.a{color:var(--amber)}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;min-height:100vh}
+.main-header{padding:20px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;background:rgba(10,10,10,.95);backdrop-filter:blur(8px);z-index:10}
+.page-title{font-size:.95rem;font-weight:700;color:var(--white)}
+.page-title span{color:var(--green)}
+.breadcrumb{font-family:var(--mono);font-size:.58rem;color:var(--text2);letter-spacing:1px;margin-bottom:3px}
+
+.status-pill{font-family:var(--mono);font-size:.62rem;padding:5px 11px;border-radius:20px;letter-spacing:1px;display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);color:var(--text2);transition:all .3s;white-space:nowrap}
+.status-pill.loading{border-color:var(--blue);color:var(--blue)}
+.status-pill.success{border-color:var(--green);color:var(--green)}
+.status-pill.error{border-color:var(--red);color:var(--red)}
+.spin{width:8px;height:8px;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* PANELS */
+.panel{display:none;flex:1;flex-direction:column}
+.panel.active{display:flex}
+
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px}
+.card-header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-title{font-family:var(--mono);font-size:.6rem;letter-spacing:3px;text-transform:uppercase;color:var(--text2)}
+.card-body{padding:18px}
+
+/* CREATE */
+.create-body{flex:1;padding:28px;display:flex;flex-direction:column}
+.examples-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.chip{background:var(--s2);border:1px solid var(--border2);border-radius:3px;color:var(--text2);font-family:var(--mono);font-size:.6rem;padding:4px 9px;cursor:pointer;transition:all .15s;letter-spacing:.5px}
+.chip:hover{border-color:var(--green);color:var(--green);background:rgba(0,230,118,.04)}
+.prompt-wrap{display:flex;gap:10px;align-items:flex-end}
+.prompt-wrap textarea{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:4px;color:var(--white);font-family:var(--sans);font-size:.88rem;line-height:1.6;padding:11px 14px;resize:none;min-height:68px;outline:none;transition:border-color .2s}
+.prompt-wrap textarea:focus{border-color:var(--green)}
+.prompt-wrap textarea::placeholder{color:#444}
+.count-row{display:flex;align-items:center;gap:10px;margin-top:12px}
+.count-row label{font-family:var(--mono);font-size:.6rem;letter-spacing:2px;color:var(--text2);text-transform:uppercase;white-space:nowrap}
+.count-row input[type=range]{flex:1;accent-color:var(--green);cursor:pointer}
+.count-val{font-family:var(--mono);font-size:.72rem;color:var(--green);min-width:24px;text-align:right}
+
+.btn-primary{background:var(--green);border:none;border-radius:4px;color:#000;font-family:var(--mono);font-size:.7rem;font-weight:700;letter-spacing:2px;padding:12px 18px;cursor:pointer;text-transform:uppercase;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.btn-primary:hover{background:#1fff8a;box-shadow:0 0 18px rgba(0,230,118,.3)}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary:disabled{background:var(--s3);color:var(--text2);cursor:not-allowed;box-shadow:none}
+
+/* TRACKLIST */
+.tl-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden;flex:1}
+.pl-name-input{background:transparent;border:none;color:var(--white);font-family:var(--sans);font-size:.9rem;font-weight:700;outline:none;flex:1;min-width:0;padding:0}
+.pl-name-input:focus{border-bottom:1px solid var(--green)}
+.pl-name-input::placeholder{color:#444}
+.track-meta{font-family:var(--mono);font-size:.6rem;color:var(--text2);white-space:nowrap}
+
+.track-list{padding:4px 0}
+.track-row{display:grid;grid-template-columns:32px 1fr auto auto;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s;animation:slideIn .2s ease forwards}
+@keyframes slideIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+.track-row:hover{background:rgba(255,255,255,.03)}
+.track-row.removed{opacity:.25;text-decoration:line-through}
+.track-num{font-family:var(--mono);font-size:.65rem;color:var(--text2);text-align:right}
+.track-info{min-width:0}
+.track-name{font-size:.85rem;font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track-artist{font-family:var(--mono);font-size:.6rem;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-family:var(--mono);font-size:.58rem;padding:2px 7px;border-radius:2px;white-space:nowrap;letter-spacing:.5px}
+.badge.found{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2)}
+.badge.searching{background:rgba(68,138,255,.1);color:var(--blue);border:1px solid rgba(68,138,255,.2)}
+.badge.not-found{background:rgba(255,82,82,.1);color:var(--red);border:1px solid rgba(255,82,82,.2)}
+.badge.pending{background:var(--s2);color:var(--text2);border:1px solid var(--border)}
+.badge.new{background:rgba(255,171,0,.1);color:var(--amber);border:1px solid rgba(255,171,0,.2)}
+.rm-btn{background:none;border:none;color:var(--text2);font-size:.85rem;cursor:pointer;padding:3px 5px;border-radius:3px;opacity:0;transition:all .15s;line-height:1}
+.track-row:hover .rm-btn{opacity:1}
+.rm-btn:hover{color:var(--red);background:rgba(255,82,82,.1)}
+
+.tl-footer{padding:14px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn-ghost{background:none;border:1px solid var(--border2);border-radius:4px;color:var(--text2);font-family:var(--mono);font-size:.62rem;letter-spacing:1px;padding:8px 13px;cursor:pointer;text-transform:uppercase;transition:all .2s}
+.btn-ghost:hover{border-color:var(--text2);color:var(--white)}
+.btn-ghost.danger:hover{border-color:var(--red);color:var(--red)}
+.spacer{flex:1}
+
+.success-banner{background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:5px;padding:12px 16px;display:none;align-items:center;gap:12px;margin:0 14px 14px}
+.success-banner.visible{display:flex}
+.success-banner p{font-size:.8rem;color:var(--text)}
+.success-banner a{color:var(--green);font-weight:600;text-decoration:none;font-size:.8rem}
+.success-banner a:hover{text-decoration:underline}
+
+/* EDIT */
+.edit-body{flex:1;padding:28px;display:flex;flex-direction:column}
+.load-row{display:flex;gap:10px;align-items:center}
+.load-row input{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:4px;color:var(--white);font-family:var(--mono);font-size:.75rem;padding:10px 13px;outline:none;transition:border-color .2s}
+.load-row input:focus{border-color:var(--blue)}
+.load-row input::placeholder{color:#444}
+.btn-load{background:var(--blue);border:none;border-radius:4px;color:#fff;font-family:var(--mono);font-size:.68rem;letter-spacing:2px;padding:10px 16px;cursor:pointer;text-transform:uppercase;transition:all .2s;white-space:nowrap}
+.btn-load:hover{background:#639dff}
+.btn-load:disabled{background:var(--s3);color:var(--text2);cursor:not-allowed}
+
+.edit-actions{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.action-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:18px}
+.action-card .card-title{display:block;margin-bottom:12px}
+.action-card textarea{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:4px;color:var(--white);font-family:var(--sans);font-size:.83rem;padding:9px 13px;resize:none;min-height:62px;outline:none;margin-bottom:9px;transition:border-color .2s;line-height:1.5}
+.action-card textarea:focus{border-color:var(--amber)}
+.action-card textarea::placeholder{color:#444}
+.btn-action{background:var(--s3);border:1px solid var(--border2);border-radius:4px;color:var(--white);font-family:var(--mono);font-size:.62rem;letter-spacing:2px;padding:8px 13px;cursor:pointer;text-transform:uppercase;transition:all .2s}
+.btn-action:hover{border-color:var(--amber);color:var(--amber)}
+.btn-action:disabled{opacity:.35;cursor:not-allowed}
+.btn-action.blue:hover{border-color:var(--blue);color:var(--blue)}
+
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text2);padding:60px;text-align:center}
+.empty-state .icon{font-size:2.2rem;opacity:.25}
+.empty-state p{font-family:var(--mono);font-size:.68rem;letter-spacing:1px;max-width:240px;line-height:1.9}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.hidden{display:none}
+.modal-box{background:var(--s1);border:1px solid var(--border2);border-radius:10px;padding:30px;max-width:420px;width:100%}
+.modal-box h3{font-family:var(--sans);font-size:1.05rem;font-weight:700;color:var(--white);margin-bottom:6px}
+.modal-box p{font-family:var(--mono);font-size:.68rem;color:var(--text2);line-height:1.7;margin-bottom:18px}
+.modal-box ol{padding-left:16px;margin-bottom:18px;display:flex;flex-direction:column;gap:9px}
+.modal-box li{font-family:var(--mono);font-size:.68rem;color:var(--text);line-height:1.7}
+.modal-box li a{color:var(--green);text-decoration:none}
+.modal-box li a:hover{text-decoration:underline}
+.modal-box code{background:var(--s3);border:1px solid var(--border2);border-radius:3px;padding:1px 5px;font-size:.64rem;color:var(--blue)}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px}
+
+.save-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.save-opt{background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:14px;cursor:pointer;transition:all .2s;text-align:left}
+.save-opt:hover,.save-opt.selected{border-color:var(--green);background:rgba(0,230,118,.05)}
+.save-opt .oi{font-size:1.2rem;margin-bottom:7px}
+.save-opt .ol{font-family:var(--sans);font-size:.8rem;font-weight:600;color:var(--white);margin-bottom:3px}
+.save-opt .od{font-family:var(--mono);font-size:.6rem;color:var(--text2);line-height:1.5}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+@media(max-width:700px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto}
+  .edit-actions{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Setup modal -->
+<div class="modal-overlay hidden" id="setupModal">
+  <div class="modal-box">
+    <h3>Setup Guide</h3>
+    <p>You need a free Spotify Developer app and an Anthropic API key. Takes about 3 minutes.</p>
+    <ol>
+      <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a>, log in, create a new app, and set the Redirect URI to <code>http://localhost</code>.</li>
+      <li>Copy your <strong>Client ID</strong> from the dashboard and paste it in the sidebar.</li>
+      <li>Click <strong>Connect Spotify</strong> — authorize, then copy the URL you land on and paste it when prompted. Token is extracted automatically.</li>
+      <li>Get your Anthropic key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.</li>
+    </ol>
+    <div class="modal-footer">
+      <button class="btn-primary" onclick="document.getElementById('setupModal').classList.add('hidden')">Got It</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save modal -->
+<div class="modal-overlay hidden" id="saveModal">
+  <div class="modal-box">
+    <h3>Save to Spotify</h3>
+    <p>How do you want to apply these changes?</p>
+    <div class="save-options" id="saveOptions">
+      <div class="save-opt selected" id="optOverwrite" onclick="selectSaveOpt('overwrite')">
+        <div class="oi">✏️</div>
+        <div class="ol">Overwrite</div>
+        <div class="od">Update the original playlist in place</div>
+      </div>
+      <div class="save-opt" id="optNew" onclick="selectSaveOpt('new')">
+        <div class="oi">✨</div>
+        <div class="ol">New Copy</div>
+        <div class="od">Create a new playlist, keep original</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="document.getElementById('saveModal').classList.add('hidden')">Cancel</button>
+      <button class="btn-primary" onclick="executeSave()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark"><span class="dot"></span>PLST</div>
+    <div class="logo-sub">AI Playlist Studio</div>
+  </div>
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tabCreate" onclick="switchMode('create')">Create</button>
+    <button class="mode-tab" id="tabEdit" onclick="switchMode('edit')">Edit</button>
+  </div>
+  <div class="config">
+    <div class="sec-label">API Keys</div>
+    <div class="field"><label>Anthropic Key</label><input type="password" id="anthropicKey" placeholder="sk-ant-..."/></div>
+    <div class="sec-label">Spotify</div>
+    <div class="field"><label>Client ID</label><input type="text" id="spotifyClientId" placeholder="Your app client ID"/></div>
+    <div class="field"><label>Access Token</label><input type="password" id="spotifyToken" placeholder="Paste token after connecting"/></div>
+    <button class="connect-btn" id="connectBtn" onclick="connectSpotify()">⚡ Connect Spotify</button>
+    <a href="#" class="help-link" onclick="document.getElementById('setupModal').classList.remove('hidden');return false">? Setup Guide</a>
+  </div>
+  <div class="sidebar-stats" id="sidebarStats">
+    <div class="sec-label" style="margin-top:0">Session</div>
+    <div class="stat-row"><span class="k">TRACKS</span><span class="v g" id="statTracks">0</span></div>
+    <div class="stat-row"><span class="k">ON SPOTIFY</span><span class="v g" id="statFound">0</span></div>
+    <div class="stat-row"><span class="k">NOT FOUND</span><span class="v a" id="statMissing">0</span></div>
+    <div class="stat-row"><span class="k">MODE</span><span class="v" id="statMode">CREATE</span></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="main-header">
+    <div>
+      <div class="breadcrumb" id="breadcrumb">MODE / CREATE</div>
+      <div class="page-title" id="pageTitle">New <span>Playlist</span></div>
+    </div>
+    <div class="status-pill" id="statusPill">IDLE</div>
+  </div>
+
+  <!-- CREATE PANEL -->
+  <div class="panel active" id="panelCreate">
+    <div class="create-body">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><span class="card-title">Describe Your Playlist</span></div>
+        <div class="card-body">
+          <div class="examples-row">
+            <span class="chip" onclick="setPrompt('create','Songs like No Excuses by NF')">Songs like No Excuses by NF</span>
+            <span class="chip" onclick="setPrompt('create','Juice WRLD and XXXTentacion vibes')">Juice WRLD &amp; XXXTentacion</span>
+            <span class="chip" onclick="setPrompt('create','Late night lo-fi study session')">Lo-fi Study</span>
+            <span class="chip" onclick="setPrompt('create','Hard gym rap workout playlist')">Gym Rap</span>
+            <span class="chip" onclick="setPrompt('create','Sad heartbreak R&B songs')">Heartbreak R&amp;B</span>
+            <span class="chip" onclick="setPrompt('create','90s hip-hop classics only')">90s Hip-Hop</span>
+          </div>
+          <div class="prompt-wrap">
+            <textarea id="createPrompt" placeholder="e.g. 'Create a playlist with songs similar to Lucid Dreams by Juice WRLD' or 'Playlist for Kendrick Lamar and J. Cole'"></textarea>
+            <button class="btn-primary" id="generateBtn" onclick="generatePlaylist()">Generate</button>
+          </div>
+          <div class="count-row">
+            <label>Tracks</label>
+            <input type="range" id="trackCount" min="5" max="30" value="20" oninput="document.getElementById('countVal').textContent=this.value"/>
+            <span class="count-val" id="countVal">20</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tl-card" id="createTLCard" style="display:none">
+        <div class="card-header">
+          <input class="pl-name-input" id="createPLName" type="text" placeholder="Playlist name…" value="AI Playlist"/>
+          <span class="track-meta" id="createMeta"></span>
+        </div>
+        <div class="track-list" id="createTrackList"></div>
+        <div class="tl-footer">
+          <button class="btn-ghost danger" onclick="resetCreate()">Clear</button>
+          <div class="spacer"></div>
+          <button class="btn-primary" id="createSaveBtn" onclick="openSave('create')" disabled>Save to Spotify</button>
+        </div>
+        <div class="success-banner" id="createBanner">
+          <span style="font-size:1.2rem">✅</span>
+          <div><p style="color:var(--white);font-weight:600;margin-bottom:2px">Playlist created!</p><a id="createLink" href="#" target="_blank">Open in Spotify →</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT PANEL -->
+  <div class="panel" id="panelEdit">
+    <div class="edit-body">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><span class="card-title">Load Existing Playlist</span></div>
+        <div class="card-body">
+          <div class="load-row">
+            <input type="text" id="playlistUrl" placeholder="Paste Spotify playlist URL or ID…"/>
+            <button class="btn-load" id="loadBtn" onclick="loadPlaylist()">Load</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="editActions" style="display:none">
+        <div class="edit-actions">
+          <div class="action-card">
+            <span class="card-title">⚡ AI Rewrite</span>
+            <textarea id="rewritePrompt" placeholder="e.g. 'Replace slow songs with energetic ones' or 'Make this a workout playlist'"></textarea>
+            <button class="btn-action" id="rewriteBtn" onclick="aiRewrite()">Rewrite Playlist</button>
+          </div>
+          <div class="action-card">
+            <span class="card-title">＋ Add Songs</span>
+            <textarea id="addPrompt" placeholder="e.g. 'Add 10 more songs with the same vibe' or 'Add some Weeknd songs'"></textarea>
+            <button class="btn-action blue" id="addBtn" onclick="aiAddSongs()">Add Songs</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tl-card" id="editTLCard" style="display:none;flex:1">
+        <div class="card-header">
+          <input class="pl-name-input" id="editPLName" type="text" placeholder="Playlist name…"/>
+          <span class="track-meta" id="editMeta"></span>
+        </div>
+        <div class="track-list" id="editTrackList"></div>
+        <div class="tl-footer">
+          <button class="btn-ghost" onclick="reloadPlaylist()">↺ Reload Original</button>
+          <div class="spacer"></div>
+          <button class="btn-primary" id="editSaveBtn" onclick="openSave('edit')" disabled>Save to Spotify</button>
+        </div>
+        <div class="success-banner" id="editBanner">
+          <span style="font-size:1.2rem">✅</span>
+          <div><p style="color:var(--white);font-weight:600;margin-bottom:2px">Saved!</p><a id="editLink" href="#" target="_blank">Open in Spotify →</a></div>
+        </div>
+      </div>
+
+      <div class="empty-state" id="editEmpty">
+        <div class="icon">📂</div>
+        <p>Paste a Spotify playlist URL above to load and start editing</p>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+// STATE
+let mode='create';
+let cTracks=[],eTracks=[];
+let loadedPID=null;
+let savingPanel='create';
+let saveMode='new';
+
+// MODE SWITCH
+function switchMode(m){
+  mode=m;
+  ['create','edit'].forEach(x=>{
+    document.getElementById('tab'+cap(x)).classList.toggle('active',x===m);
+    document.getElementById('panel'+cap(x)).classList.toggle('active',x===m);
+  });
+  document.getElementById('breadcrumb').textContent='MODE / '+m.toUpperCase();
+  document.getElementById('pageTitle').innerHTML=m==='create'?'New <span>Playlist</span>':'Edit <span>Playlist</span>';
+  document.getElementById('statMode').textContent=m.toUpperCase();
+}
+function cap(s){return s[0].toUpperCase()+s.slice(1)}
+
+// STATUS
+function setStatus(msg,type='idle'){
+  const p=document.getElementById('statusPill');
+  p.className='status-pill'+(type!=='idle'?' '+type:'');
+  p.innerHTML=type==='loading'?`<div class="spin"></div>${msg}`:msg;
+}
+
+// PROMPTS
+function setPrompt(panel,text){document.getElementById(panel==='create'?'createPrompt':'addPrompt').value=text}
+
+// SPOTIFY AUTH
+function connectSpotify(){
+  const cid=document.getElementById('spotifyClientId').value.trim();
+  if(!cid){alert('Enter your Spotify Client ID first.');return}
+  const scopes='playlist-modify-public playlist-modify-private playlist-read-private';
+  const url=`https://accounts.spotify.com/authorize?client_id=${encodeURIComponent(cid)}&response_type=token&redirect_uri=${encodeURIComponent('http://localhost')}&scope=${encodeURIComponent(scopes)}`;
+  window.open(url,'SpotifyAuth','width=500,height=700');
+  setTimeout(()=>{
+    const pasted=prompt('After authorizing, copy the full URL from your browser bar and paste it here:');
+    if(pasted){
+      const m=pasted.match(/access_token=([^&]+)/);
+      if(m){
+        document.getElementById('spotifyToken').value=m[1];
+        document.getElementById('connectBtn').classList.add('connected');
+        document.getElementById('connectBtn').textContent='✓ Connected';
+        setStatus('SPOTIFY CONNECTED','success');
+      } else alert('Could not extract token. Try again.');
+    }
+  },3000);
+}
+function getToken(){return document.getElementById('spotifyToken').value.trim()}
+function getKey(){return document.getElementById('anthropicKey').value.trim()}
+
+// HELPERS
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function updateStats(tracks){
+  const found=tracks.filter(t=>t.status==='found').length;
+  const miss=tracks.filter(t=>t.status==='not-found').length;
+  document.getElementById('statTracks').textContent=tracks.length;
+  document.getElementById('statFound').textContent=found;
+  document.getElementById('statMissing').textContent=miss;
+  document.getElementById('sidebarStats').style.display='flex';
+}
+
+// RENDER
+function renderTracks(tracks,listId,metaId,panel){
+  const list=document.getElementById(listId);
+  const active=tracks.filter(t=>!t.removed);
+  const found=active.filter(t=>t.status==='found').length;
+  document.getElementById(metaId).textContent=`${active.length} tracks · ${found} on Spotify`;
+  list.innerHTML=tracks.map((t,i)=>`
+    <div class="track-row${t.removed?' removed':''}">
+      <div class="track-num">${i+1}</div>
+      <div class="track-info">
+        <div class="track-name">${esc(t.name)}</div>
+        <div class="track-artist">${esc(t.artist)}</div>
+      </div>
+      <div class="badge ${t.status||'pending'}${t.new?' new':''}">${
+        t.status==='found'?'✓ Found':t.status==='searching'?'…':t.status==='not-found'?'✗ Missing':t.new?'NEW':'—'
+      }</div>
+      ${!t.removed?`<button class="rm-btn" onclick="removeTrack('${panel}',${i})" title="Remove">✕</button>`:'<div></div>'}
+    </div>`).join('');
+  updateStats(tracks);
+}
+
+function removeTrack(panel,i){
+  if(panel==='create'){cTracks[i].removed=true;renderTracks(cTracks,'createTrackList','createMeta','create')}
+  else{eTracks[i].removed=true;renderTracks(eTracks,'editTrackList','editMeta','edit')}
+}
+
+// GENERATE
+async function generatePlaylist(){
+  const key=getKey();if(!key)return alert('Enter your Anthropic API key.');
+  const prompt=document.getElementById('createPrompt').value.trim();if(!prompt)return alert('Describe the playlist.');
+  const count=document.getElementById('trackCount').value;
+  document.getElementById('generateBtn').disabled=true;
+  document.getElementById('createTLCard').style.display='none';
+  document.getElementById('createBanner').className='success-banner';
+  document.getElementById('createSaveBtn').disabled=true;
+  cTracks=[];setStatus('ASKING CLAUDE…','loading');
+  try{
+    const res=await callClaude(key,
+      `You are a world-class DJ. Respond ONLY with raw JSON — no markdown, no backticks:\n{"playlistName":"string","tracks":[{"name":"string","artist":"string"}]}\nPick exactly ${count} real, existing songs. Raw JSON only.`,
+      prompt
+    );
+    document.getElementById('createPLName').value=res.playlistName||'AI Playlist';
+    cTracks=res.tracks.map(t=>({name:t.name,artist:t.artist,spotifyId:null,status:'pending',removed:false}));
+    document.getElementById('createTLCard').style.display='block';
+    renderTracks(cTracks,'createTrackList','createMeta','create');
+    setStatus('SEARCHING SPOTIFY…','loading');
+    await searchAll(cTracks,'create');
+    renderTracks(cTracks,'createTrackList','createMeta','create');
+    document.getElementById('createSaveBtn').disabled=false;
+    setStatus('READY','success');
+  }catch(e){setStatus('ERROR: '+e.message,'error')}
+  document.getElementById('generateBtn').disabled=false;
+}
+
+function resetCreate(){
+  cTracks=[];
+  document.getElementById('createTLCard').style.display='none';
+  document.getElementById('createPrompt').value='';
+  document.getElementById('createBanner').className='success-banner';
+  document.getElementById('createSaveBtn').disabled=true;
+  setStatus('IDLE');
+}
+
+// LOAD PLAYLIST
+async function loadPlaylist(){
+  const token=getToken();if(!token)return alert('Connect Spotify first.');
+  const raw=document.getElementById('playlistUrl').value.trim();if(!raw)return alert('Paste a playlist URL or ID.');
+  let pid=raw;const m=raw.match(/playlist\/([a-zA-Z0-9]+)/);if(m)pid=m[1];
+  document.getElementById('loadBtn').disabled=true;
+  setStatus('LOADING PLAYLIST…','loading');
+  eTracks=[];loadedPID=pid;
+  try{
+    let url=`https://api.spotify.com/v1/playlists/${pid}/tracks?limit=100`,all=[];
+    while(url){
+      const r=await spotifyGet(url,token);
+      all=all.concat(r.items);url=r.next;
+    }
+    const plR=await spotifyGet(`https://api.spotify.com/v1/playlists/${pid}?fields=name`,token);
+    document.getElementById('editPLName').value=plR.name||'Loaded Playlist';
+    eTracks=all.filter(i=>i.track&&i.track.id).map(i=>({
+      name:i.track.name,
+      artist:i.track.artists.map(a=>a.name).join(', '),
+      spotifyId:i.track.id,status:'found',removed:false,new:false
+    }));
+    document.getElementById('editActions').style.display='block';
+    document.getElementById('editTLCard').style.display='block';
+    document.getElementById('editEmpty').style.display='none';
+    document.getElementById('editSaveBtn').disabled=false;
+    renderTracks(eTracks,'editTrackList','editMeta','edit');
+    setStatus(`LOADED ${eTracks.length} TRACKS`,'success');
+  }catch(e){setStatus('ERROR: '+e.message,'error')}
+  document.getElementById('loadBtn').disabled=false;
+}
+function reloadPlaylist(){document.getElementById('editBanner').className='success-banner';loadPlaylist()}
+
+// AI REWRITE
+async function aiRewrite(){
+  const key=getKey();if(!key)return alert('Enter your Anthropic API key.');
+  if(!eTracks.length)return alert('Load a playlist first.');
+  const prompt=document.getElementById('rewritePrompt').value.trim();if(!prompt)return alert('Describe what to change.');
+  const token=getToken();if(!token)return alert('Connect Spotify first.');
+  setDisabledEdit(true);setStatus('REWRITING WITH AI…','loading');
+  const curList=eTracks.filter(t=>!t.removed).map(t=>`${t.name} by ${t.artist}`).join('\n');
+  try{
+    const res=await callClaude(key,
+      `You are a music curation expert. Given a playlist and instruction, return a NEW version. Respond ONLY with raw JSON:\n{"playlistName":"string","tracks":[{"name":"string","artist":"string"}]}\nOnly real songs. Match count unless told otherwise. Raw JSON only.`,
+      `Current playlist:\n${curList}\n\nInstruction: ${prompt}`
+    );
+    document.getElementById('editPLName').value=res.playlistName||document.getElementById('editPLName').value;
+    eTracks=res.tracks.map(t=>({name:t.name,artist:t.artist,spotifyId:null,status:'pending',removed:false,new:false}));
+    renderTracks(eTracks,'editTrackList','editMeta','edit');
+    setStatus('SEARCHING SPOTIFY…','loading');
+    await searchAll(eTracks,'edit');
+    renderTracks(eTracks,'editTrackList','editMeta','edit');
+    setStatus('REWRITE DONE','success');
+  }catch(e){setStatus('ERROR: '+e.message,'error')}
+  setDisabledEdit(false);
+}
+
+// AI ADD SONGS
+async function aiAddSongs(){
+  const key=getKey();if(!key)return alert('Enter your Anthropic API key.');
+  if(!eTracks.length)return alert('Load a playlist first.');
+  const prompt=document.getElementById('addPrompt').value.trim();if(!prompt)return alert('Describe what to add.');
+  const token=getToken();if(!token)return alert('Connect Spotify first.');
+  setDisabledEdit(true);setStatus('FINDING NEW SONGS…','loading');
+  const curList=eTracks.filter(t=>!t.removed).map(t=>`${t.name} by ${t.artist}`).join('\n');
+  try{
+    const res=await callClaude(key,
+      `You are a music expert. Return ONLY the new songs to add (not existing ones). Respond ONLY with raw JSON:\n{"tracks":[{"name":"string","artist":"string"}]}\nDo not repeat existing songs. Raw JSON only.`,
+      `Existing playlist:\n${curList}\n\nAdd instruction: ${prompt}`
+    );
+    const newT=res.tracks.map(t=>({name:t.name,artist:t.artist,spotifyId:null,status:'pending',removed:false,new:true}));
+    const fromIdx=eTracks.length;
+    eTracks=[...eTracks,...newT];
+    renderTracks(eTracks,'editTrackList','editMeta','edit');
+    setStatus('SEARCHING SPOTIFY…','loading');
+    await searchFrom(eTracks,fromIdx,'edit');
+    renderTracks(eTracks,'editTrackList','editMeta','edit');
+    setStatus(`ADDED ${newT.length} SONGS`,'success');
+  }catch(e){setStatus('ERROR: '+e.message,'error')}
+  setDisabledEdit(false);
+}
+
+function setDisabledEdit(v){
+  document.getElementById('rewriteBtn').disabled=v;
+  document.getElementById('addBtn').disabled=v;
+}
+
+// CLAUDE API
+async function callClaude(key,system,userMsg){
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system,messages:[{role:'user',content:userMsg}]})
+  });
+  if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'Claude API error')}
+  const data=await res.json();
+  const raw=data.content.find(b=>b.type==='text')?.text||'';
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+}
+
+// SPOTIFY HELPERS
+async function spotifyGet(url,token){
+  const r=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});
+  if(!r.ok)throw new Error('Spotify error: '+r.status+'. Check token and playlist URL.');
+  return r.json();
+}
+
+async function searchAll(tracks,panel){
+  const token=getToken();if(!token){setStatus('NO TOKEN','error');return}
+  for(let i=0;i<tracks.length;i++){
+    if(tracks[i].spotifyId&&tracks[i].status==='found')continue;
+    await searchOne(tracks,i,token);
+    if(i%4===0)renderTracks(tracks,panel==='create'?'createTrackList':'editTrackList',panel==='create'?'createMeta':'editMeta',panel);
+    await sleep(100);
+  }
+}
+async function searchFrom(tracks,from,panel){
+  const token=getToken();if(!token)return;
+  for(let i=from;i<tracks.length;i++){
+    await searchOne(tracks,i,token);
+    if(i%4===0)renderTracks(tracks,'editTrackList','editMeta',panel);
+    await sleep(100);
+  }
+}
+async function searchOne(tracks,i,token){
+  tracks[i].status='searching';
+  const t=tracks[i];
+  for(const q of[`track:${t.name} artist:${t.artist}`,`${t.name} ${t.artist}`]){
+    try{
+      const r=await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=1`,{headers:{Authorization:`Bearer ${token}`}});
+      if(r.status===401)throw new Error('Token expired');
+      const d=await r.json();
+      const item=d.tracks?.items?.[0];
+      if(item){tracks[i].spotifyId=item.id;tracks[i].status='found';return}
+    }catch(e){if(e.message==='Token expired'){setStatus('TOKEN EXPIRED','error');return}}
+    await sleep(60);
+  }
+  tracks[i].status='not-found';
+}
+
+// SAVE MODAL
+function openSave(panel){
+  savingPanel=panel;
+  saveMode=panel==='edit'?'overwrite':'new';
+  document.getElementById('optOverwrite').style.display=panel==='edit'?'block':'none';
+  document.getElementById('optOverwrite').classList.toggle('selected',saveMode==='overwrite');
+  document.getElementById('optNew').classList.toggle('selected',saveMode==='new');
+  document.getElementById('saveModal').classList.remove('hidden');
+}
+function selectSaveOpt(opt){
+  saveMode=opt;
+  document.getElementById('optOverwrite').classList.toggle('selected',opt==='overwrite');
+  document.getElementById('optNew').classList.toggle('selected',opt==='new');
+}
+
+async function executeSave(){
+  document.getElementById('saveModal').classList.add('hidden');
+  const token=getToken();if(!token)return alert('Connect Spotify first.');
+  const tracks=savingPanel==='create'?cTracks:eTracks;
+  const name=document.getElementById(savingPanel==='create'?'createPLName':'editPLName').value.trim()||'AI Playlist';
+  const uris=tracks.filter(t=>!t.removed&&t.status==='found').map(t=>`spotify:track:${t.spotifyId}`);
+  if(!uris.length)return alert('No Spotify tracks to save.');
+  setStatus('SAVING…','loading');
+  try{
+    const me=await spotifyGet('https://api.spotify.com/v1/me',token);
+    let pid,purl;
+    if(saveMode==='overwrite'&&loadedPID){
+      pid=loadedPID;
+      // Replace all tracks
+      await fetch(`https://api.spotify.com/v1/playlists/${pid}/tracks`,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({uris:uris.slice(0,100)})});
+      for(let i=100;i<uris.length;i+=100)
+        await fetch(`https://api.spotify.com/v1/playlists/${pid}/tracks`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({uris:uris.slice(i,i+100)})});
+      await fetch(`https://api.spotify.com/v1/playlists/${pid}`,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({name})});
+      purl=`https://open.spotify.com/playlist/${pid}`;
+    } else {
+      const cr=await fetch(`https://api.spotify.com/v1/users/${me.id}/playlists`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({name,description:'Made with PLST — AI Playlist Studio',public:true})});
+      if(!cr.ok)throw new Error('Failed to create playlist');
+      const pl=await cr.json();pid=pl.id;purl=pl.external_urls.spotify;
+      for(let i=0;i<uris.length;i+=100)
+        await fetch(`https://api.spotify.com/v1/playlists/${pid}/tracks`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({uris:uris.slice(i,i+100)})});
+    }
+    const bid=savingPanel==='create'?'createBanner':'editBanner';
+    const lid=savingPanel==='create'?'createLink':'editLink';
+    document.getElementById(lid).href=purl;
+    document.getElementById(bid).className='success-banner visible';
+    setStatus('SAVED ✓','success');
+  }catch(e){setStatus('ERROR: '+e.message,'error')}
+}
+</script>
+</body>
+</html>
